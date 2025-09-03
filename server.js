@@ -30,7 +30,7 @@ import { connectDB } from './Config/Db.js';
 // Import routes
 import authRoutes from './Routes/Auth.js';
 import musicRoutes from './Routes/Music.js';
-import lyricsRoutes from './Routes/Lyrics.js';
+import lyricsRoutes from './Routes/lyrics.js';
 import audioRoutes from './Routes/Audio.js';
 import videoRoutes from './Routes/Video.js';
 import accountRoutes from './Routes/Account.js';

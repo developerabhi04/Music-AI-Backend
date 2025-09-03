@@ -186,7 +186,7 @@ class MusicController {
   }
 
 
-  // ✅ Add status checking method
+  // Add this method to your MusicController class
   async checkSongStatus(req, res) {
     try {
       const { songId } = req.params;
@@ -277,6 +277,7 @@ class MusicController {
       });
     }
   }
+
 
 
 
