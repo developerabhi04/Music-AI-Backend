@@ -315,13 +315,26 @@ app.use((error, req, res, next) => {
 
 
 // 404 handler
-app.use('*', (req, res) => {
+// 404 handler - Express 5.x compatible
+app.use('/*splat', (req, res) => {
   res.status(404).json({
     success: false,
     message: `Route ${req.method} ${req.originalUrl} not found`,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    availableRoutes: {
+      health: 'GET /health',
+      api: 'GET /api',
+      auth: 'POST /api/auth/*',
+      music: 'POST /api/music/*',
+      lyrics: 'POST /api/lyrics/*',
+      audio: 'POST /api/audio/*',
+      video: 'POST /api/video/*',
+      account: 'GET /api/account/*',
+      workspaces: 'GET /api/workspaces/*'
+    }
   });
 });
+
 
 
 

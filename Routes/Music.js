@@ -10,6 +10,8 @@ router.post('/generate', auth, musicController.generateMusic);
 router.post('/extend', auth, musicController.extendMusic);
 router.post('/cover', auth, musicController.coverAudio);
 
+router.get('/status/:songId', auth, musicController.checkSongStatus);
+
 // Song Management Routes
 router.get('/details/:songId', auth, musicController.getMusicDetails);
 router.get('/user-songs', auth, musicController.getUserSongs);

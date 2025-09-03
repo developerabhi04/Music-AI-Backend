@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const router = express.Router();
 
-// ✅ Download and save actual audio files
+// ✅ Enhanced audio download with better error handling
 async function downloadAudio(audioUrl, songId) {
     try {
         console.log(`📥 Downloading audio from: ${audioUrl}`);
@@ -19,7 +19,10 @@ async function downloadAudio(audioUrl, songId) {
             method: 'GET',
             url: audioUrl,
             responseType: 'stream',
-            timeout: 30000
+            timeout: 60000, // 60 second timeout
+            headers: {
+                'User-Agent': 'MusicAI-Backend/1.0'
+            }
         });
 
         const filename = `${songId}.mp3`;
@@ -40,6 +43,12 @@ async function downloadAudio(audioUrl, songId) {
             writer.on('finish', () => {
                 const fileSize = fs.statSync(audioPath).size;
                 console.log(`✅ Audio saved: ${audioPath} (${fileSize} bytes)`);
+
+                if (fileSize === 0) {
+                    reject(new Error('Downloaded file is empty'));
+                    return;
+                }
+
                 resolve(`${process.env.BACKEND_URL}/generated-music/${filename}`);
             });
 
@@ -47,6 +56,12 @@ async function downloadAudio(audioUrl, songId) {
                 console.error('❌ Error writing audio file:', error);
                 reject(error);
             });
+
+            // Handle download timeout
+            setTimeout(() => {
+                writer.destroy();
+                reject(new Error('Audio download timeout'));
+            }, 60000);
         });
 
     } catch (error) {
@@ -55,7 +70,7 @@ async function downloadAudio(audioUrl, songId) {
     }
 }
 
-// ✅ Process successful song generation
+// ✅ Enhanced song processing
 async function processSongCallback(songData) {
     try {
         console.log('🎵 Processing song callback:', songData);
@@ -80,8 +95,13 @@ async function processSongCallback(songData) {
                 localAudioUrl = await downloadAudio(audio_url, song._id);
                 console.log(`✅ Audio downloaded for song: ${song.title}`);
             } catch (downloadError) {
-                console.error('❌ Failed to download audio, using original URL:', downloadError.message);
-                localAudioUrl = audio_url; // Fallback to original URL
+                console.error('❌ Failed to download audio:', downloadError.message);
+
+                // If download fails, mark as failed rather than completed
+                song.status = 'failed';
+                song.errorMessage = `Failed to download audio: ${downloadError.message}`;
+                await song.save();
+                return;
             }
         }
 
@@ -119,7 +139,7 @@ async function processSongCallback(songData) {
     }
 }
 
-// ✅ Suno Webhook Handler
+// ✅ Enhanced Suno Webhook Handler
 router.post('/suno', async (req, res) => {
     try {
         console.log('🎵 Suno Webhook Received:', JSON.stringify(req.body, null, 2));
@@ -151,7 +171,16 @@ router.post('/suno', async (req, res) => {
 
         } else if (code !== 200) {
             console.error('❌ Suno generation failed:', msg);
-            // Handle failed generations if needed
+
+            // Handle failed generations
+            if (data && data.task_id) {
+                const song = await Song.findOne({ sunoTaskId: data.task_id });
+                if (song) {
+                    song.status = 'failed';
+                    song.errorMessage = msg || 'Generation failed';
+                    await song.save();
+                }
+            }
 
         } else {
             console.log('📨 Suno webhook received with no processable data:', req.body);
@@ -160,7 +189,8 @@ router.post('/suno', async (req, res) => {
         // Always respond with 200 OK to acknowledge receipt
         res.status(200).json({
             success: true,
-            message: 'Callback received and processed successfully'
+            message: 'Callback received and processed successfully',
+            processed: songsToProcess?.length || 0
         });
 
     } catch (error) {
@@ -172,7 +202,7 @@ router.post('/suno', async (req, res) => {
     }
 });
 
-// Test endpoint for webhook
+// ✅ Test endpoint
 router.get('/test', (req, res) => {
     res.json({
         success: true,

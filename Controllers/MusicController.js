@@ -185,6 +185,101 @@ class MusicController {
     }
   }
 
+
+  // ✅ Add status checking method
+  async checkSongStatus(req, res) {
+    try {
+      const { songId } = req.params;
+      const userId = req.user.id;
+
+      const song = await Song.findOne({ _id: songId, user: userId });
+      if (!song) {
+        return res.status(404).json({
+          success: false,
+          message: 'Song not found'
+        });
+      }
+
+      // If still generating and has task ID, check with Suno API
+      if (song.status === 'generating' && song.sunoTaskId) {
+        try {
+          console.log(`🔍 Checking status for task: ${song.sunoTaskId}`);
+
+          const statusCheck = await sunoApi.getGenerationDetails(song.sunoTaskId);
+          console.log('📊 Status check result:', statusCheck);
+
+          if (statusCheck.success) {
+            if (statusCheck.status === 'COMPLETED' && statusCheck.songs?.length > 0) {
+              // Process completion manually
+              const songData = statusCheck.songs[0];
+
+              song.status = 'completed';
+              song.completedAt = new Date();
+
+              if (songData.audio_url) {
+                try {
+                  // Download audio file
+                  const audioDir = path.join(__dirname, '..', 'public', 'generated-music');
+                  if (!fs.existsSync(audioDir)) {
+                    fs.mkdirSync(audioDir, { recursive: true });
+                  }
+
+                  const response = await axios({
+                    method: 'GET',
+                    url: songData.audio_url,
+                    responseType: 'stream'
+                  });
+
+                  const audioPath = path.join(audioDir, `${song._id}.mp3`);
+                  const writer = fs.createWriteStream(audioPath);
+                  response.data.pipe(writer);
+
+                  await new Promise((resolve, reject) => {
+                    writer.on('finish', resolve);
+                    writer.on('error', reject);
+                  });
+
+                  song.audioUrl = `${process.env.BACKEND_URL}/generated-music/${song._id}.mp3`;
+                  console.log(`✅ Manual download complete: ${song.audioUrl}`);
+                } catch (downloadError) {
+                  console.error('❌ Manual download failed:', downloadError);
+                  song.audioUrl = songData.audio_url; // Fallback to original URL
+                }
+              }
+
+              if (songData.image_url) song.imageUrl = songData.image_url;
+              if (songData.title) song.title = songData.title;
+              if (songData.duration) song.duration = songData.duration;
+
+              await song.save();
+
+            } else if (statusCheck.status === 'FAILED') {
+              song.status = 'failed';
+              song.errorMessage = statusCheck.errorMessage || 'Generation failed';
+              await song.save();
+            }
+          }
+        } catch (statusError) {
+          console.error('❌ Status check error:', statusError);
+        }
+      }
+
+      res.json({
+        success: true,
+        data: song
+      });
+
+    } catch (error) {
+      console.error('Check song status error:', error);
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to check song status'
+      });
+    }
+  }
+
+
+
   // ✅ Get Music Details - Enhanced with real-time status checking
   async getMusicDetails(req, res) {
     try {

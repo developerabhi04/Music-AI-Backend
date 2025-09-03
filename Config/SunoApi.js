@@ -344,40 +344,40 @@ class SunoApiClient {
 
     // Additional utility methods based on docs
     async getLyricsDetails(taskId) {
-    try {
-        const response = await this.client.get(`/api/v1/make-lyrics/record-info?taskId=${taskId}`);
+        try {
+            const response = await this.client.get(`/api/v1/make-lyrics/record-info?taskId=${taskId}`);
 
-        if (response.data.code === 200) {
-            return {
-                success: true,
-                data: response.data.data,
-                message: response.data.msg
-            };
-        } else {
-            throw new Error(response.data.msg || 'Failed to get lyrics details');
+            if (response.data.code === 200) {
+                return {
+                    success: true,
+                    data: response.data.data,
+                    message: response.data.msg
+                };
+            } else {
+                throw new Error(response.data.msg || 'Failed to get lyrics details');
+            }
+        } catch (error) {
+            throw this.handleError(error);
         }
-    } catch (error) {
-        throw this.handleError(error);
     }
-}
 
     async getCoverDetails(taskId) {
-    try {
-        const response = await this.client.get(`/api/v1/suno/cover/record-info?taskId=${taskId}`);
+        try {
+            const response = await this.client.get(`/api/v1/suno/cover/record-info?taskId=${taskId}`);
 
-        if (response.data.code === 200) {
-            return {
-                success: true,
-                data: response.data.data,
-                message: response.data.msg
-            };
-        } else {
-            throw new Error(response.data.msg || 'Failed to get cover details');
+            if (response.data.code === 200) {
+                return {
+                    success: true,
+                    data: response.data.data,
+                    message: response.data.msg
+                };
+            } else {
+                throw new Error(response.data.msg || 'Failed to get cover details');
+            }
+        } catch (error) {
+            throw this.handleError(error);
         }
-    } catch (error) {
-        throw this.handleError(error);
     }
 }
-}
 
-export default new SunoApiClient();
+export default SunoApiClient;
